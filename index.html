@@ -410,20 +410,22 @@
     if (extra) { for (var k in extra) h[k] = extra[k]; }
     return h;
   }
+  var SUPA_ROW = "/rest/v1/platforms?label=eq.__doc_snapshot__";
   function supaPull(cb) {
     if (!SUPA_ON) { if (cb) cb(false); return; }
-    fetch(SUPA_URL + "/rest/v1/doc_snapshot?id=eq.1&select=saved_at", { headers: supaHeaders() })
+    fetch(SUPA_URL + SUPA_ROW + "&select=slug", { headers: supaHeaders() })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         var row = rows && rows[0];
         if (!row) { if (cb) cb(false); return; }
-        var ts = Date.parse(row.saved_at) || 0;
+        var ts = Number(row.slug) || 0;
         if (ts <= supaRemoteTs) { if (cb) cb(false); return; }
-        fetch(SUPA_URL + "/rest/v1/doc_snapshot?id=eq.1&select=data", { headers: supaHeaders() })
+        fetch(SUPA_URL + SUPA_ROW + "&select=description", { headers: supaHeaders() })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (d) {
-            var data = d && d[0] && d[0].data;
-            if (!data) { if (cb) cb(false); return; }
+            var raw = d && d[0] && d[0].description;
+            if (!raw) { if (cb) cb(false); return; }
+            var data; try { data = JSON.parse(raw); } catch (e) { if (cb) cb(false); return; }
             supaRemoteTs = ts;
             if (Date.now() < supaEditingUntil) { if (cb) cb(false); return; }
             if ((data.savedAt || 0) <= (DATA.savedAt || 0)) { if (cb) cb(false); return; }
@@ -441,13 +443,13 @@
     if (!SUPA_ON) return;
     clearTimeout(supaPushTimer);
     supaPushTimer = setTimeout(function () {
-      var iso = new Date().toISOString();
-      fetch(SUPA_URL + "/rest/v1/doc_snapshot?on_conflict=id", {
-        method: "POST",
-        headers: supaHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({ id: 1, data: DATA, saved_at: iso })
+      var ts = DATA.savedAt || Date.now();
+      fetch(SUPA_URL + SUPA_ROW, {
+        method: "PATCH",
+        headers: supaHeaders({ Prefer: "return=minimal" }),
+        body: JSON.stringify({ description: JSON.stringify(DATA), slug: String(ts) })
       }).then(function (r) {
-        if (r.ok) { supaRemoteTs = Date.parse(iso) || Date.now(); setSaveChip("모든 팀원에게 저장됨"); }
+        if (r.ok) { supaRemoteTs = ts; setSaveChip("모든 팀원에게 저장됨"); }
         else { setSaveChip("공유 저장 실패 (" + r.status + ")"); }
       }).catch(function () { setSaveChip("공유 저장 실패 (네트워크)"); });
     }, 700);
