@@ -398,6 +398,61 @@
     else DATA = seed || ls || defaultData();
   })();
 
+  // ---------- Supabase 공유 저장소 (팀원 편집 실시간 공유) ----------
+  var SUPA_URL = "https://ejcblqcfnyjrscyjqafv.supabase.co";
+  var SUPA_KEY = "sb_publishable_NRVt6Fmnm7i9p3uMvR3wKg_iDh4P-Nr";
+  var SUPA_ON = true;
+  var supaRemoteTs = 0;        // 마지막으로 확인한 원격 saved_at (ms)
+  var supaEditingUntil = 0;    // 이 시각 전에는 원격 pull이 DATA를 덮어쓰지 않음
+  var supaPushTimer = null;
+  function supaHeaders(extra) {
+    var h = { apikey: SUPA_KEY, Authorization: "Bearer " + SUPA_KEY, "Content-Type": "application/json" };
+    if (extra) { for (var k in extra) h[k] = extra[k]; }
+    return h;
+  }
+  function supaPull(cb) {
+    if (!SUPA_ON) { if (cb) cb(false); return; }
+    fetch(SUPA_URL + "/rest/v1/doc_snapshot?id=eq.1&select=saved_at", { headers: supaHeaders() })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        var row = rows && rows[0];
+        if (!row) { if (cb) cb(false); return; }
+        var ts = Date.parse(row.saved_at) || 0;
+        if (ts <= supaRemoteTs) { if (cb) cb(false); return; }
+        fetch(SUPA_URL + "/rest/v1/doc_snapshot?id=eq.1&select=data", { headers: supaHeaders() })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (d) {
+            var data = d && d[0] && d[0].data;
+            if (!data) { if (cb) cb(false); return; }
+            supaRemoteTs = ts;
+            if (Date.now() < supaEditingUntil) { if (cb) cb(false); return; }
+            if ((data.savedAt || 0) <= (DATA.savedAt || 0)) { if (cb) cb(false); return; }
+            DATA = data;
+            CHAT_INDEX = null; CHAT_KAKAO = null;
+            try { localStorage.setItem(LS_KEY, JSON.stringify(DATA)); } catch (e) {}
+            render();
+            if (cb) cb(true);
+          })
+          .catch(function () { if (cb) cb(false); });
+      })
+      .catch(function () { if (cb) cb(false); });
+  }
+  function supaPush() {
+    if (!SUPA_ON) return;
+    clearTimeout(supaPushTimer);
+    supaPushTimer = setTimeout(function () {
+      var iso = new Date().toISOString();
+      fetch(SUPA_URL + "/rest/v1/doc_snapshot?on_conflict=id", {
+        method: "POST",
+        headers: supaHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+        body: JSON.stringify({ id: 1, data: DATA, saved_at: iso })
+      }).then(function (r) {
+        if (r.ok) { supaRemoteTs = Date.parse(iso) || Date.now(); setSaveChip("모든 팀원에게 저장됨"); }
+        else { setSaveChip("공유 저장 실패 (" + r.status + ")"); }
+      }).catch(function () { setSaveChip("공유 저장 실패 (네트워크)"); });
+    }, 700);
+  }
+
   // ---------- persistence ----------
   var artifactNS = undefined; // undefined = not tried, null = unavailable
   function getArtifact() {
@@ -425,6 +480,8 @@
   function save() {
     DATA.savedAt = Date.now();
     CHAT_INDEX = null; CHAT_KAKAO = null;
+    supaEditingUntil = Date.now() + 10000;
+    supaPush();
     var json = JSON.stringify(DATA);
     try { localStorage.setItem(LS_KEY, json); } catch (e) {}
     clearTimeout(saveTimer);
@@ -1087,6 +1144,9 @@
 
   render();
   restoreScroll();
+  // 공유 저장소에서 최신 내용 가져오기 + 주기적 동기화
+  supaPull();
+  setInterval(function () { supaPull(); }, 12000);
   // surface persistence mode once ready
   getArtifact().then(function (ns) {
     setSaveChip(ns ? "변경 시 자동 저장됨" : "변경 시 이 브라우저에 저장됨");
