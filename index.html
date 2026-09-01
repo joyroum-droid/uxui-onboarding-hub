@@ -51,31 +51,8 @@
   }
   :root { --radius:10px; --maxw:760px; }  /* 색상 아님 — 모서리 반경 / 본문 최대폭 */
 
-  /* 다크 모드 색상 (선택) */
-  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-    --main-bg:#ffffff; --hero-title:#111111; --surface:#181c25; --surface-2:#1f2430; --ground:#10131a;
-    --ink:#111111; --muted:#9aa1b2; --faint:#6b7284; --border:#2a303d;
-    --accent:#007AF2; --accent-ink:#ffffff; --accent-soft:#233246;
-    --sidebar:#f5f5f5; --sidebar-ink:#0D0D0D; --sidebar-muted:#0D0D0D;
-    --sidebar-active:#111111; --sidebar-hover-ink:#FFE083; --addstep-ink:#111111; --addstep-hover-bg:#007AF2; --addstep-hover-ink:#FFE083;
-    --callout-info-bg:#132a44; --callout-info-border:#2f5379;
-    --callout-warn-bg:#3d2325; --callout-warn-border:#7a4247;
-    --callout-kakao-bg:#3a3316; --callout-kakao-border:#6b5c24;
-    --danger:#FF888F; --danger-ink:#ffffff; --danger-border:#f3b9bd;
-    --overlay:rgba(6,8,12,0.6);
-  }}
-  :root[data-theme="dark"]{
-    --main-bg:#ffffff; --hero-title:#111111; --surface:#181c25; --surface-2:#1f2430; --ground:#10131a;
-    --ink:#111111; --muted:#9aa1b2; --faint:#6b7284; --border:#2a303d;
-    --accent:#007AF2; --accent-ink:#ffffff; --accent-soft:#233246;
-    --sidebar:#f5f5f5; --sidebar-ink:#0D0D0D; --sidebar-muted:#0D0D0D;
-    --sidebar-active:#111111; --sidebar-hover-ink:#FFE083; --addstep-ink:#111111; --addstep-hover-bg:#007AF2; --addstep-hover-ink:#FFE083;
-    --callout-info-bg:#132a44; --callout-info-border:#2f5379;
-    --callout-warn-bg:#3d2325; --callout-warn-border:#7a4247;
-    --callout-kakao-bg:#3a3316; --callout-kakao-border:#6b5c24;
-    --danger:#FF888F; --danger-ink:#ffffff; --danger-border:#f3b9bd;
-    --overlay:rgba(6,8,12,0.6);
-  }
+  /* 항상 라이트 모드로 고정 — 팀원 OS 다크 설정 무시 */
+  :root{ color-scheme:light; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--ground);color:var(--ink);
     font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
@@ -173,8 +150,8 @@
   @media (max-width:600px){section.first .sec-head h2{font-size:34px}}
 
   /* cat character above chat */
-  .cat-hero{display:flex;justify-content:center;margin:-8px 0 20px}
-  .cat-hero img,.cat-hero video{width:min(620px,100%);height:auto;display:block;border-radius:12px}
+  .cat-hero{display:block;text-align:center;margin:-8px 0 20px}
+  .cat-hero img,.cat-hero video{width:min(680px,90%);height:auto;display:inline-block;border-radius:12px}
 
   .chat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
   .chat-log{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;max-height:440px;overflow-y:auto}
